@@ -1,43 +1,85 @@
-pub mod task {
-    #[derive(Debug)]
-    struct Task {
-        name: String,
-        description: Option<String>,
-        due_date: Option<String>,
-        tags: Vec<String>,
-        priority: u8,
-        completed: bool,
+use std::collections::HashSet;
+use chrono::{NaiveDate, Local};
+
+#[derive(Clone)]
+pub struct Task {
+    name: String,
+    description: Option<String>,
+    due_date: Option<NaiveDate>,
+    tags: HashSet<String>,
+    priority: u8,
+    completed: bool,
+}
+impl Task {
+    pub fn new(name: String) -> Self {
+        Task {
+            name,
+            description: None,
+            due_date: None,
+            tags: HashSet::new(),
+            priority: 5, // Default priority
+            completed: false,
+        }
     }
 
-    impl Task {
-        pub fn new(name: String) -> Self {
-            Task {
-                name,
-                description: None,
-                due_date: None,
-                tags: Vec::new(),
-                priority: 0,
-                completed: false,
-            }
-        }
+    // Getters
+    pub fn name(&self) -> &String {
+        &self.name
+    }
 
-        pub fn set_description(&mut self, description: String) {
-            self.description = Some(description);
-        }
-        pub fn set_due_date(&mut self, due_date: String) {
-            self.due_date = Some(due_date);
-        }
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
 
-        pub fn add_tag(&mut self, tag: String) {
-            self.tags.push(tag);
-        }
+    pub fn due_date(&self) -> Option<String> {
+        self.due_date.map(|date| date.format("%Y-%-%d").to_string())
+    }
 
-        pub fn set_priority(&mut self, priority: u8) {
+    pub fn tags(&self) -> &HashSet<String> {
+        self.tags.iter().map(|s| s.as_str()).collect()
+    }
+
+    pub fn priority(&self) -> u8 {
+        self.priority
+    }
+
+    pub fn completed(&self) -> bool {
+        self.completed
+    }
+
+    // Setters
+    pub fn set_description(&mut self, description: String) {
+        self.description = Some(description);
+    }
+    pub fn set_due_date(&mut self, due_date: String) -> Result<(), String> {
+        match NaiveDate::parse_from_str(&due_date, "%Y-%m-%d") {
+            Ok(date) => {
+                let today = Local::now().date_naive();
+                if date < today {
+                    return Err("Due date cannot be in the past.".to_string());
+                }
+                self.due_date = Some(date);
+                Ok(())
+            },
+            Err(_) => Err("Invalid date format. Use YYYY-MM-DD.".to_string()),
+        }
+    }
+    pub fn add_tag(&mut self, tag: String) {
+        self.tags.insert(tag);
+    }
+
+    pub fn remove_tag(&mut self, tag: &str) {
+        self.tags.remove(tag);
+    }
+    pub fn set_priority(&mut self, priority: u8) -> Result<(), String> {
+        if priority <= 10 {
             self.priority = priority;
+            Ok(())
+        } else {
+            Err("Priority must be between 0 and 10.".to_string())
         }
-
-        pub fn mark_completed(&mut self) {
-            self.completed = true;
-        }
+    }
+    pub fn mark_completed(&mut self) {
+        self.completed = true;
     }
 }
