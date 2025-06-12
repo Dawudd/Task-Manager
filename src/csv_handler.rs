@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::Path;
 use crate::task::Task;
@@ -37,25 +37,46 @@ impl CsvHandler {
                     eprintln!("Error setting due date for task '{}': {}", task.name(), e);
                 }
             }
-            // Priority
-            if let Ok(priority) = record[3].parse::<u8>() {
-                if let Err(e) = task.set_priority(priority) {
-                    eprintln!("Error setting priority for task '{}': {}", task.name(), e);
-                }
-            }
-            // Status
-            if record[4].parse::<bool>().unwrap_or(false) {
-                task.mark_completed();
-            }
             // Tags
-            for tag in record[5].split(',') {
+            for tag in record[3].split(',') {
                 let tag = tag.trim();
                 if !tag.is_empty() {
                     task.add_tag(tag.to_string());
                 }
             }
+            // Priority
+            if let Ok(priority) = record[4].parse::<u8>() {
+                if let Err(e) = task.set_priority(priority) {
+                    eprintln!("Error setting priority for task '{}': {}", task.name(), e);
+                }
+            }
+            // Status
+            if record[5].parse::<bool>().unwrap_or(false) {
+                task.mark_completed();
+            }
+            
             tasks.push(task);
         }
         Ok(tasks)
+    }
+    
+    pub fn save_tasks(&self, tasks: &[&Task]) -> io::Result<()> {
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&self.file_path)?;
+        let mut csv_writer = csv::Writer::from_writer(file);
+        for task in tasks {
+            csv_writer.write_record(&[
+                task.name(),
+                task.description().unwrap_or(""),
+                &task.due_date().unwrap_or("".to_string()),
+                &task.tags_csv(),
+                &task.priority().to_string(),
+                &task.completed().to_string(),
+            ])?;
+        }
+        Ok(())
     }
 }

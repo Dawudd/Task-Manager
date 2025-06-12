@@ -82,4 +82,10 @@ impl Task {
     pub fn mark_completed(&mut self) {
         self.completed = true;
     }
+
+    pub fn tags_csv(&self) -> String {
+        let mut tags: Vec<&str> = self.tags.iter().map(|s| s.as_str()).collect();
+        tags.sort();
+        tags.join(",")
+    }
 }
