@@ -15,7 +15,7 @@ impl CsvHandler {
     }
     
     pub fn load_tasks(&self) -> io::Result<Vec<Task>> {
-        if (!Path::new(&self.file_path).exists()) {
+        if !Path::new(&self.file_path).exists() {
             return Ok(Vec::new());
         }
         
