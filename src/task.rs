@@ -36,7 +36,7 @@ impl Task {
     }
 
     pub fn tags(&self) -> &HashSet<String> {
-        self.tags.iter().map(|s| s.as_str()).collect()
+        &self.tags
     }
 
     pub fn priority(&self) -> u8 {
