@@ -31,8 +31,12 @@ impl Task {
         self.description.as_deref()
     }
 
-    pub fn due_date(&self) -> Option<String> {
+    pub fn due_date_as_str(&self) -> Option<String> {
         self.due_date.map(|date| date.format("%Y-%-%d").to_string())
+    }
+
+    pub fn due_date(&self) -> Option<NaiveDate> {
+        self.due_date
     }
 
     pub fn tags(&self) -> &HashSet<String> {

@@ -67,11 +67,14 @@ impl CsvHandler {
             .truncate(true)
             .open(&self.file_path)?;
         let mut csv_writer = csv::Writer::from_writer(file);
+        csv_writer.write_record(&[
+            "name", "description", "due_date", "tags", "priority", "completed"
+        ])?;
         for task in tasks {
             csv_writer.write_record(&[
                 task.name(),
                 task.description().unwrap_or(""),
-                &task.due_date().unwrap_or("".to_string()),
+                &task.due_date_as_str().unwrap_or("".to_string()),
                 &task.tags_csv(),
                 &task.priority().to_string(),
                 &task.completed().to_string(),
