@@ -1,8 +1,8 @@
-use std::collections::HashSet;
 use crate::task_manager::TaskManager;
 use std::io;
 use std::process::exit;
 use crate::task::Task;
+use colored::Colorize;
 
 pub mod task;
 mod csv_handler;
@@ -126,6 +126,8 @@ fn edit_task(task_manager: &mut TaskManager, name: &str) {
         };
 
         // Description
+        clear_console();
+        println!("Editing task: {}\n(Skip fields to keep current values)", task.name());
         let current_description = task.description().unwrap_or("");
         let description_input = read_input(&format!("Enter new description [{}]: ", current_description));
         let description = if description_input.is_empty() {
@@ -135,6 +137,8 @@ fn edit_task(task_manager: &mut TaskManager, name: &str) {
         };
 
         // Due date
+        clear_console();
+        println!("Editing task: {}\n(Skip fields to keep current values)", task.name());
         let current_due_date = task.due_date_as_str().unwrap_or("".to_string());
         let due_date_input = read_input(&format!("Enter new due date [{}]: ", current_due_date));
         let due_date = if due_date_input.is_empty() {
@@ -144,6 +148,8 @@ fn edit_task(task_manager: &mut TaskManager, name: &str) {
         };
 
         // Tags
+        clear_console();
+        println!("Editing task: {}\n(Skip fields to keep current values, ',' to clear tags)", task.name());
         let tags_input = read_input(&format!("Enter new tags [{}]: ", task.tags_csv()));
         let tags = if tags_input.is_empty() {
             task.tags().clone()
@@ -155,6 +161,8 @@ fn edit_task(task_manager: &mut TaskManager, name: &str) {
         };
 
         // Priority
+        clear_console();
+        println!("Editing task: {}\n(Skip fields to keep current values)", task.name());
         let priority_input = read_input(&format!("Enter new priority [{}]: ", task.priority()));
         let priority: u8 = if priority_input.is_empty() {
             task.priority()
@@ -262,6 +270,28 @@ fn wait() {
     read_input("");
 }
 
+fn print_tasks_for_today(task_manager: &TaskManager) {
+    let today = chrono::Local::now().date_naive();
+
+    let tasks_before_today: Vec<&Task> = task_manager.get_all_tasks_with_due_date()
+        .into_iter()
+        .filter(|task| task.due_date().map_or(false, |d| d < today))
+        .collect();
+
+    let tasks_for_today: Vec<&Task> = task_manager.get_all_tasks_with_due_date()
+        .into_iter()
+        .filter(|task| task.due_date().map_or(false, |d| d == today))
+        .collect();
+
+    println!("Tasks for today:");
+    for task in tasks_before_today {
+        println!("- {} (Due: {})", task.name(), task.due_date().unwrap().format("%Y-%m-%d").to_string().red());
+    }
+    for task in tasks_for_today {
+        println!("- {} (Due: {})", task.name(), task.due_date().unwrap());
+    }
+}
+
 fn main() {
     let mut task_manager = TaskManager::new();
     let csv_handler = csv_handler::CsvHandler::new("tasks.csv".to_string());
@@ -279,6 +309,7 @@ fn main() {
     loop {
         clear_console();
         println!("Task Manager");
+        print_tasks_for_today(&task_manager);
         println!("(1) List and manage tasks");
         println!("(2) Add a new task");
         println!("(3) View completed tasks");
