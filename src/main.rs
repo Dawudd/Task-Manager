@@ -1,5 +1,7 @@
+use std::collections::HashSet;
 use crate::task_manager::TaskManager;
 use std::io;
+use std::process::exit;
 use crate::task::Task;
 
 pub mod task;
@@ -56,7 +58,7 @@ fn read_task_details() -> Task {
             task.add_tag(tag.trim().to_string());
         }
     }
-    
+
     // Priority
     loop {
         let priority = read_input("Enter priority (0-10) (default: 5):");
@@ -70,7 +72,7 @@ fn read_task_details() -> Task {
             }
         }
     }
-    
+
     task
 }
 
@@ -87,6 +89,32 @@ fn display_task(task: &Task) {
     }
     task.print_priority();
     println!("Completed: {}", task.completed());
+}
+
+fn display_tasks_with_due_date(task_manager: &TaskManager) {
+    let tasks = task_manager.get_all_tasks_with_due_date();
+
+    if tasks.is_empty() {
+        return;
+    }
+
+    println!("Tasks with due date:");
+    for (i, task) in tasks.iter().enumerate() {
+        println!("{}: {}\t{}", i + 1, task.name(), task.due_date().unwrap());
+    }
+}
+
+fn display_tasks_without_due_date(task_manager: &TaskManager) {
+    let tasks = task_manager.get_all_tasks_without_due_date();
+
+    if tasks.is_empty() {
+        return;
+    }
+
+    println!("Tasks without due date:");
+    for (i, task) in tasks.iter().enumerate() {
+        println!("{}: {}", i + 1, task.name());
+    }
 }
 
 fn main() {
