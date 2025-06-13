@@ -91,32 +91,119 @@ fn display_task(task: &Task) {
     println!("Completed: {}", task.completed());
 }
 
-fn display_tasks_with_due_date(task_manager: &TaskManager) {
-    let tasks = task_manager.get_all_tasks_with_due_date();
+fn display_all_tasks(task_manager: &mut TaskManager) {
+    let tasks_with_due_date = task_manager.get_all_tasks_with_due_date();
+    let tasks_without_due_date = task_manager.get_all_tasks_without_due_date();
 
-    if tasks.is_empty() {
-        return;
+    if !tasks_with_due_date.is_empty() {
+        println!("Tasks with due date:");
+        for (i, name) in tasks_with_due_date.iter().enumerate() {
+            println!("{}. {} {}", i + 1, name.due_date().unwrap(), name.name());
+        }
     }
 
-    println!("Tasks with due date:");
-    for (i, task) in tasks.iter().enumerate() {
-        println!("{}: {}\t{}", i + 1, task.name(), task.due_date().unwrap());
+    if !tasks_without_due_date.is_empty() {
+        println!("\nTasks without due date:");
+        for (i, name) in tasks_without_due_date.iter().enumerate() {
+            println!("{}. {}", i + 1 + tasks_with_due_date.len(), name.name());
+        }
+    }
+
+    if task_manager.task_count() == 0 {
+        println!("No tasks available.");
+        wait();
+        return;
+    } else {
+        println!("\nTotal tasks: {}", task_manager.task_count());
+    }
+
+    let choice = read_input("\nEnter task number to view details");
+    if !choice.is_empty() {
+        if let Ok(index) = choice.parse::<usize>() {
+            let selected_name = if index <= tasks_with_due_date.len() {
+                tasks_with_due_date.get(index - 1).map(|task| task.name())
+            } else {
+                tasks_without_due_date.get(index - 1 - tasks_with_due_date.len()).map(|task| task.name())
+            };
+            if let Some(task_name) = selected_name {
+                if let Some(task) = task_manager.get_task(&task_name).cloned() {
+                    clear_console();
+                    display_task(&task);
+                    let action = read_input("Actions: [E]dit, [C]omplete, [D]elete");
+                    match action.to_uppercase().as_str() {
+                        "E" => {
+                            let updated_task = read_task_details();
+                            task_manager.remove_task(&task.name());
+                            task_manager.add_task(updated_task);
+                            println!("Task updated successfully.");
+                        }
+                        "C" => {
+                            task_manager.mark_task_completed(&task.name());
+                            println!("Task marked as completed.");
+                        }
+                        "D" => {
+                            task_manager.remove_task(&task.name());
+                            println!("Task deleted successfully.");
+                        }
+                        _ => println!("Invalid action."),
+                    }
+                }
+            }
+        }
     }
 }
 
-fn display_tasks_without_due_date(task_manager: &TaskManager) {
-    let tasks = task_manager.get_all_tasks_without_due_date();
-
-    if tasks.is_empty() {
-        return;
-    }
-
-    println!("Tasks without due date:");
-    for (i, task) in tasks.iter().enumerate() {
-        println!("{}: {}", i + 1, task.name());
-    }
+fn wait() {
+    read_input("");
 }
 
 fn main() {
-    println!("Hello, world!");
+    let mut task_manager = TaskManager::new();
+    let csv_handler = csv_handler::CsvHandler::new("tasks.csv".to_string());
+
+    // Loading tasks
+    if let Ok(tasks) = csv_handler.load_tasks() {
+        for task in tasks {
+            task_manager.add_task(task);
+        }
+    } else {
+        println!("Error loading tasks from file. Starting with an empty task list.");
+        wait();
+    }
+
+    loop {
+        clear_console();
+        println!("Task Manager");
+        println!("(1) List and manage tasks");
+        println!("(2) Add a new task");
+        println!("(3) Exit and save tasks");
+        
+        let choice = read_input("Choose an option:");
+
+        match choice.as_str() {
+            "1" => {
+                clear_console();
+                display_all_tasks(&mut task_manager);
+            }
+            "2" => {
+                clear_console();
+                let task = read_task_details();
+                task_manager.add_task(task);
+                println!("Task added successfully.");
+                wait();
+            }
+            "3" => {
+                clear_console();
+                if let Err(e) = csv_handler.save_tasks(&task_manager.get_all_tasks()) {
+                    println!("Error saving tasks: {}", e);
+                } else {
+                    println!("Tasks saved successfully.");
+                }
+                exit(0);
+            }
+            _ => {
+                //
+            }
+        }
+    }
 }

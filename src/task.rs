@@ -48,13 +48,14 @@ impl Task {
     }
 
     pub fn print_priority(&self) {
-        for i in 0..self.priority {
+        for _ in 0..self.priority {
             print!("*");
         }
         let remaining = 10 - self.priority;
         for _ in 0..remaining {
             print!("_");
         }
+        println!();
     }
 
     pub fn completed(&self) -> bool {

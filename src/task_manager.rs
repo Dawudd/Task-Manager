@@ -63,4 +63,13 @@ impl TaskManager {
     pub fn list_pending_tasks(&self) -> Vec<&Task> {
         self.tasks.values().filter(|task| !task.completed()).collect()
     }
+    
+    pub fn mark_task_completed(&mut self, name: &str) -> Option<&Task> {
+        if let Some(task) = self.tasks.get_mut(name) {
+            task.mark_completed();
+            Some(task)
+        } else {
+            None
+        }
+    }
 }
