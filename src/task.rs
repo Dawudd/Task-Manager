@@ -32,7 +32,7 @@ impl Task {
     }
 
     pub fn due_date_as_str(&self) -> Option<String> {
-        self.due_date.map(|date| date.format("%Y-%-%d").to_string())
+        self.due_date.map(|date| date.format("%Y-%m-%d").to_string())
     }
 
     pub fn due_date(&self) -> Option<NaiveDate> {
@@ -69,10 +69,6 @@ impl Task {
     pub fn set_due_date(&mut self, due_date: String) -> Result<(), String> {
         match NaiveDate::parse_from_str(&due_date, "%Y-%m-%d") {
             Ok(date) => {
-                let today = Local::now().date_naive();
-                if date < today {
-                    return Err("Due date cannot be in the past.".to_string());
-                }
                 self.due_date = Some(date);
                 Ok(())
             },

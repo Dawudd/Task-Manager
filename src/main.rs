@@ -29,8 +29,11 @@ fn read_input(prompt: &str) -> String {
     input.trim().to_string()
 }
 
-fn read_task_details() -> Task {
+fn read_task_details() -> Result<Task, String> {
     let name = read_input("Enter task name:");
+    if name.is_empty() {
+        return Err(String::from("Task name is empty"));
+    }
     let mut task = Task::new(name);
 
     // Description
@@ -73,7 +76,7 @@ fn read_task_details() -> Task {
         }
     }
 
-    task
+    Ok(task)
 }
 
 fn display_task(task: &Task) {
@@ -90,6 +93,111 @@ fn display_task(task: &Task) {
     task.print_priority();
     println!("Completed: {}", task.completed());
 }
+
+fn display_completed_tasks(task_manager: &TaskManager) {
+    let completed_tasks = task_manager.list_completed_tasks();
+    if completed_tasks.is_empty() {
+        println!("No completed tasks.");
+        wait();
+        return;
+    }
+    println!("Completed Tasks:");
+    for (i, task) in completed_tasks.iter().enumerate() {
+        println!("{}. {}", i + 1, task.name());
+    }
+
+    println!("\nTotal completed tasks: {}", completed_tasks.len());
+    wait();
+}
+
+fn edit_task(task_manager: &mut TaskManager, name: &str) {
+    if let Some(task) = task_manager.get_task(name) {
+        let task = task.clone();
+        clear_console();
+
+        println!("Editing task: {}\n(Skip fields to keep current values)", task.name());
+
+        // Name
+        let new_name_input = read_input(&format!("Enter new name [{}]: ", task.name()));
+        let new_name = if new_name_input.is_empty() {
+            task.name().to_string()
+        } else {
+            new_name_input
+        };
+
+        // Description
+        let current_description = task.description().unwrap_or("");
+        let description_input = read_input(&format!("Enter new description [{}]: ", current_description));
+        let description = if description_input.is_empty() {
+            current_description.to_string()
+        } else {
+            description_input
+        };
+
+        // Due date
+        let current_due_date = task.due_date_as_str().unwrap_or("".to_string());
+        let due_date_input = read_input(&format!("Enter new due date [{}]: ", current_due_date));
+        let due_date = if due_date_input.is_empty() {
+            current_due_date
+        } else {
+            due_date_input
+        };
+
+        // Tags
+        let tags_input = read_input(&format!("Enter new tags [{}]: ", task.tags_csv()));
+        let tags = if tags_input.is_empty() {
+            task.tags().clone()
+        } else {
+            tags_input.split(',')
+                .map(|tag| tag.trim().to_string())
+                .filter(|t| !t.is_empty())
+                .collect()
+        };
+
+        // Priority
+        let priority_input = read_input(&format!("Enter new priority [{}]: ", task.priority()));
+        let priority: u8 = if priority_input.is_empty() {
+            task.priority()
+        } else {
+            match priority_input.parse::<u8>() {
+                Ok(p) => p,
+                Err(_) => {
+                    println!("Invalid priority value.");
+                    return;
+                }
+            }
+        };
+
+        // Create updated task
+        let mut new_task = Task::new(new_name);
+        new_task.set_description(description);
+
+        if !due_date.is_empty() {
+            if let Err(e) = new_task.set_due_date(due_date) {
+                println!("Invalid due date: {}", e);
+                return;
+            }
+        }
+
+        for tag in tags {
+            new_task.add_tag(tag);
+        }
+
+        if let Err(e) = new_task.set_priority(priority) {
+            println!("Invalid priority: {}", e);
+            return;
+        }
+
+        // Remove old task and add updated task
+        task_manager.remove_task(name);
+        task_manager.add_task(new_task);
+
+        println!("Task updated successfully.");
+    } else {
+        println!("Task not found.");
+    }
+}
+
 
 fn display_all_tasks(task_manager: &mut TaskManager) {
     let tasks_with_due_date = task_manager.get_all_tasks_with_due_date();
@@ -129,13 +237,10 @@ fn display_all_tasks(task_manager: &mut TaskManager) {
                 if let Some(task) = task_manager.get_task(&task_name).cloned() {
                     clear_console();
                     display_task(&task);
-                    let action = read_input("Actions: [E]dit, [C]omplete, [D]elete");
+                    let action = read_input("\nActions: [E]dit, [C]omplete, [D]elete");
                     match action.to_uppercase().as_str() {
                         "E" => {
-                            let updated_task = read_task_details();
-                            task_manager.remove_task(&task.name());
-                            task_manager.add_task(updated_task);
-                            println!("Task updated successfully.");
+                            edit_task(task_manager, &task.name());
                         }
                         "C" => {
                             task_manager.mark_task_completed(&task.name());
@@ -176,7 +281,8 @@ fn main() {
         println!("Task Manager");
         println!("(1) List and manage tasks");
         println!("(2) Add a new task");
-        println!("(3) Exit and save tasks");
+        println!("(3) View completed tasks");
+        println!("(4) Exit and save tasks");
         
         let choice = read_input("Choose an option:");
 
@@ -187,12 +293,23 @@ fn main() {
             }
             "2" => {
                 clear_console();
-                let task = read_task_details();
-                task_manager.add_task(task);
-                println!("Task added successfully.");
+                match read_task_details() {
+                    Ok(task) => {
+                        task_manager.add_task(task);
+                        println!("Task added successfully.");
+                    }
+                    Err(e) => {
+                        println!("Error: {}", e);
+                    }
+                }
+
                 wait();
             }
             "3" => {
+                clear_console();
+                display_completed_tasks(&task_manager);
+            }
+            "4" => {
                 clear_console();
                 if let Err(e) = csv_handler.save_tasks(&task_manager.get_all_tasks()) {
                     println!("Error saving tasks: {}", e);
