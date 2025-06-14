@@ -428,6 +428,14 @@ fn main() {
                 clear_console();
                 match read_task_details() {
                     Ok(task) => {
+                        if task_manager.get_task(&task.name()).is_some() {
+                            let confirm = read_input("Task with this name already exists. Do you want to overwrite it? (y/n)");
+                            if confirm.to_lowercase() != "y" {
+                                println!("Task not added.");
+                                wait();
+                                continue;
+                            }
+                        }
                         task_manager.add_task(task);
                         println!("Task added successfully.");
                     }
