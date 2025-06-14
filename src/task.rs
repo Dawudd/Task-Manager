@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use chrono::{NaiveDate, Local};
+use colored::Colorize;
 
 #[derive(Clone)]
 pub struct Task {
@@ -48,14 +49,15 @@ impl Task {
     }
 
     pub fn print_priority(&self) {
+        print!("[");
         for _ in 0..self.priority {
-            print!("*");
+            print!("{}", "*".bright_yellow().bold());
         }
         let remaining = 10 - self.priority;
         for _ in 0..remaining {
             print!("_");
         }
-        println!();
+        print!("]");
     }
 
     pub fn completed(&self) -> bool {

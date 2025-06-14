@@ -80,7 +80,7 @@ fn read_task_details() -> Result<Task, String> {
 }
 
 fn display_task(task: &Task) {
-    println!("Name: {}", task.name());
+    println!("Name: {}", task.name().bold());
     if let Some(description) = task.description() {
         println!("Description: {}", description);
     }
@@ -91,7 +91,7 @@ fn display_task(task: &Task) {
         println!("Tags: {}", task.tags().iter().cloned().collect::<Vec<String>>().join(", "));
     }
     task.print_priority();
-    println!("Completed: {}", task.completed());
+    println!("\nCompleted: {}", task.completed());
 }
 
 fn display_completed_tasks(task_manager: &TaskManager) {
@@ -214,14 +214,23 @@ fn display_all_tasks(task_manager: &mut TaskManager) {
     if !tasks_with_due_date.is_empty() {
         println!("Tasks with due date:");
         for (i, name) in tasks_with_due_date.iter().enumerate() {
-            println!("{}. {} {}", i + 1, name.due_date().unwrap(), name.name());
+            print!("{}. ", i + 1 ,);
+            name.print_priority();
+            if name.due_date() < Some(chrono::Local::now().date_naive()) {
+                print!(" {}", name.due_date().unwrap().format("%Y-%m-%d").to_string().red());
+            } else {
+                print!(" {}", name.due_date().unwrap().format("%Y-%m-%d").to_string());
+            }
+            println!(" {} ", name.name())
         }
     }
 
     if !tasks_without_due_date.is_empty() {
         println!("\nTasks without due date:");
         for (i, name) in tasks_without_due_date.iter().enumerate() {
-            println!("{}. {}", i + 1 + tasks_with_due_date.len(), name.name());
+            print!("{}. ", i + 1 + tasks_with_due_date.len());
+            name.print_priority();
+            println!(" {} ", name.name());
         }
     }
 
@@ -233,9 +242,97 @@ fn display_all_tasks(task_manager: &mut TaskManager) {
         println!("\nTotal tasks: {}", task_manager.task_count());
     }
 
-    let choice = read_input("\nEnter task number to view details");
+    let choice = read_input("\nEnter task number to view details or 'F' to filter tasks");
     if !choice.is_empty() {
-        if let Ok(index) = choice.parse::<usize>() {
+        if choice.to_uppercase() == "F" {
+            clear_console();
+            println!("Choose tags to filter by (comma-separated):");
+            for tag in task_manager.get_all_tasks().iter()
+                .flat_map(|task| task.tags().iter())
+                .collect::<std::collections::HashSet<_>>() {
+                println!("{} - {}", task_manager.get_all_tasks().iter().filter(|task| task.tags().contains(tag))
+                    .count(), tag);
+
+            }
+            let tags_input = read_input("Enter tags:");
+            let tags: Vec<String> = tags_input.split(',')
+                .map(|tag| tag.trim().to_string())
+                .filter(|t| !t.is_empty())
+                .collect();
+            let filtered_tasks_with_due_date = if tags.is_empty() {
+                task_manager.get_all_tasks_with_due_date()
+            } else {
+                task_manager.get_all_tasks_with_due_date().into_iter()
+                    .filter(|task| task.tags().iter().any(|tag| tags.contains(tag)))
+                    .collect()
+            };
+            if filtered_tasks_with_due_date.is_empty() {
+                println!("No tasks found with the specified tags.");
+                wait();
+                return;
+            }
+            clear_console();
+            println!("Filtered Tasks with date:");
+            for (i, task) in filtered_tasks_with_due_date.iter().enumerate() {
+                print!("{}. ", i + 1);
+                task.print_priority();
+                if let Some(due_date) = task.due_date() {
+                    if due_date < chrono::Local::now().date_naive() {
+                        print!(" {}", due_date.format("%Y-%m-%d").to_string().red());
+                    } else {
+                        print!(" {}", due_date.format("%Y-%m-%d").to_string());
+                    }
+                }
+                println!(" {} ", task.name());
+            }
+            let filtered_tasks_without_due_date = if tags.is_empty() {
+                task_manager.get_all_tasks_without_due_date()
+            } else {
+                task_manager.get_all_tasks_without_due_date().into_iter()
+                    .filter(|task| task.tags().iter().any(|tag| tags.contains(tag)))
+                    .collect()
+            };
+            if !filtered_tasks_without_due_date.is_empty() {
+                println!("\nFiltered Tasks without date:");
+                for (i, task) in filtered_tasks_without_due_date.iter().enumerate() {
+                    print!("{}. ", i + 1 + filtered_tasks_with_due_date.len());
+                    task.print_priority();
+                    println!(" {} ", task.name());
+                }
+            } else {
+                println!("No tasks found without a due date with the specified tags.");
+            }
+            // Select task
+            let choice = read_input("\nEnter task number to view details");
+            if let Ok(index) = choice.parse::<usize>() {
+                let selected_name = if index <= filtered_tasks_with_due_date.len() {
+                    filtered_tasks_with_due_date.get(index - 1).map(|task| task.name())
+                } else {
+                    filtered_tasks_without_due_date.get(index - 1 - filtered_tasks_with_due_date.len()).map(|task| task.name())
+                };
+                if let Some(task_name) = selected_name {
+                    if let Some(task) = task_manager.get_task(&task_name).cloned() {
+                        clear_console();
+                        display_task(&task);
+                        let action = read_input("\nActions: [E]dit, [C]omplete, [D]elete");
+                        match action.to_uppercase().as_str() {
+                            "E" => {
+                                edit_task(task_manager, &task.name());
+                            }
+                            "C" => {
+                                task_manager.mark_task_completed(&task.name());
+                                println!("Task marked as completed.");
+                            }
+                            "D" => {
+                                task_manager.remove_task(&task.name());
+                                println!("Task deleted successfully.");
+                            }
+                            _ => println!("Invalid action."),
+                        }
+                    }
+                }
+            }
+        } else if let Ok(index) = choice.parse::<usize>() {
             let selected_name = if index <= tasks_with_due_date.len() {
                 tasks_with_due_date.get(index - 1).map(|task| task.name())
             } else {
