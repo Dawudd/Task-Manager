@@ -266,11 +266,6 @@ fn display_all_tasks(task_manager: &mut TaskManager) {
                     .filter(|task| task.tags().iter().any(|tag| tags.contains(tag)))
                     .collect()
             };
-            if filtered_tasks_with_due_date.is_empty() {
-                println!("No tasks found with the specified tags.");
-                wait();
-                return;
-            }
             clear_console();
             println!("Filtered Tasks with date:");
             for (i, task) in filtered_tasks_with_due_date.iter().enumerate() {
@@ -299,9 +294,14 @@ fn display_all_tasks(task_manager: &mut TaskManager) {
                     task.print_priority();
                     println!(" {} ", task.name());
                 }
-            } else {
-                println!("No tasks found without a due date with the specified tags.");
             }
+
+            if filtered_tasks_with_due_date.is_empty() && filtered_tasks_without_due_date.is_empty() {
+                println!("No tasks found with the specified tags.");
+                wait();
+                return;
+            }
+
             // Select task
             let choice = read_input("\nEnter task number to view details");
             if let Ok(index) = choice.parse::<usize>() {
@@ -333,6 +333,11 @@ fn display_all_tasks(task_manager: &mut TaskManager) {
                 }
             }
         } else if let Ok(index) = choice.parse::<usize>() {
+            if index == 0 || index > task_manager.task_count() {
+                println!("Invalid task number.");
+                wait();
+                return;
+            }
             let selected_name = if index <= tasks_with_due_date.len() {
                 tasks_with_due_date.get(index - 1).map(|task| task.name())
             } else {
