@@ -28,9 +28,10 @@ impl TaskManager {
         self.tasks.values().collect()
     }
 
-    pub fn get_all_tasks_with_due_date(&self) -> Vec<&Task> {
+    pub fn get_all_pending_tasks_with_due_date(&self) -> Vec<&Task> {
         let mut tasks_with_due_date: Vec<&Task> = self.tasks.values()
             .filter(|task| task.due_date().is_some())
+            .filter(|task| !task.completed())
             .collect();
 
         tasks_with_due_date.sort_by_key(|task| task.due_date().unwrap());
@@ -38,9 +39,10 @@ impl TaskManager {
         tasks_with_due_date
     }
 
-    pub fn get_all_tasks_without_due_date(&self) -> Vec<&Task> {
+    pub fn get_all_pending_tasks_without_due_date(&self) -> Vec<&Task> {
         self.tasks.values()
             .filter(|task| task.due_date().is_none())
+            .filter(|task| !task.completed())
             .collect()
     }
 
@@ -52,8 +54,8 @@ impl TaskManager {
         self.tasks.clear();
     }
     
-    pub fn task_count(&self) -> usize {
-        self.tasks.len()
+    pub fn pending_task_count(&self) -> usize {
+        self.tasks.values().filter(|task| !task.completed()).count()
     }
     
     pub fn list_completed_tasks(&self) -> Vec<&Task> {
